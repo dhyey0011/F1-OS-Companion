@@ -249,3 +249,123 @@ The MVP should focus on:
 - Stats that are useful but not overwhelming
 - Friend interaction during sessions
 - A product architecture that can later absorb streaming
+
+---
+
+## Design Decisions (from /plan-design-review — 2026-04-06)
+
+### Platform & Tech Stack
+
+- **MVP:** Web app (React + Vite) + browser extension (Plasmo framework)
+- **Extension:** Sidebar overlay on F1 TV — the primary demo vehicle for early users
+- **Live data:** OpenF1 API (openf1.org) — free, WebSocket live timing, REST historical
+- **Backend:** Supabase (auth, friend rooms, realtime)
+- **Mobile:** React Native / Expo — post-MVP, after PMF
+
+### Design System
+
+**Colors (dark-first):**
+```
+Background:  #0a0a0a
+Surface:     #141414
+Border:      #1f1f1f
+Primary:     #ffffff
+Secondary:   #999999
+Accent:      Team color (badge/dot only — never as background fill)
+Error:       #ff4444
+Success:     #00c853
+```
+
+**Typography:**
+- Timing data (gaps, lap times, positions): JetBrains Mono
+- UI text (headings, body, nav): DM Sans or Barlow
+- Event cards: DM Sans — plain English, readable at a glance
+
+**Spacing:** 4px base (dense data)
+**Border radius:** 4px rows, 8px cards, 0px timing displays
+
+### Screen Hierarchy
+
+| Screen | Primary (first attention) | Secondary | Tertiary |
+|--------|--------------------------|-----------|----------|
+| Home (pre-race) | Next session + countdown | Favorite driver card | Weekend storylines |
+| Home (live) | LIVE pill → jump to race | Friend room activity | Schedule |
+| Home (off-season) | Latest recap card | Driver/team updates | Trending stats |
+| Live Race | Running order (P1-P20) | Gap to car ahead | Tyre/pit status per row |
+| Live Race (event) | AI event card (floats top, 8-12s) | Updated running order | Context chips |
+| Explore | Search bar | Browse by driver/team | Featured explainer |
+| Friends | Active room (if any) | Race-contextual CTA | Past discussions |
+| Recap | Key moment headline | Race verdict (3 lines) | Moment-by-moment |
+
+### Interaction States
+
+| Feature | Loading | Empty | Error | Success | Partial |
+|---------|---------|-------|-------|---------|---------|
+| Live Race leaderboard | Skeleton rows (P1-P20) | "No race active" + next session | "Can't connect" + retry | Live data | Stale indicator (Xm old) |
+| AI Event cards | Skeleton card with team color + event type label (pulsing) | No card shown | Raw event fallback | Explanation card | Abbreviated if AI slow |
+| Friend rooms | Loading spinner | Race-contextual CTA: "[Race] is live — watch with friends" | Retry + offline mode | Room list | Room with pending invites |
+| Home | Skeleton cards | Off-season: last recap + next race date | Partial content shown | Full weekend view | Some sessions loaded |
+| Recap | "Generating recap..." | Not applicable (post-race only) | "Recap coming soon" | Full recap | Key moments only |
+
+### AI Explainer Layer
+
+- **Beginner mode:** More frequent AI event cards + inline jargon tooltips (e.g., "DRS" tappable → tooltip)
+- **Regular/Advanced mode:** Fewer cards, denser data, no tooltips by default
+- **Card lifecycle:** Floats at top of Live Race view → auto-dismiss after 8-12s → collapses to scrollable event feed below leaderboard
+- **Loading state:** Skeleton card with team color + event type label, pulsing body area
+- **Simultaneous events:** Priority TBD (eng review decision)
+
+### Connection & Data Freshness
+
+- **Connection drop:** Persistent "Live data paused — reconnecting..." banner at top, leaderboard shows last-known positions with timestamp
+- **Data latency:** OpenF1 has ~1-3s delay — acceptable for MVP. Display staleness indicator if data is >10s old.
+- **Update rate:** Only animate rows where position changed — do not re-render all 20 rows on every update
+
+### Anti-Slop Constraints
+
+- **No 3-column card grids with team-color border-left accents** — the #1 sports app template pattern
+- Tyre compounds use official labels (S/M/H + color) — never custom icon shapes
+- Driver/team pages: lead with "This Weekend" context (qualifying position, tyre strategy, recent form) — career stats are secondary
+- Leaderboard rows feel like timing screens, not social feed items
+- Friend rooms: message-first UI, not avatar grid
+- **No centered-everything layout** — data tables are left-aligned
+
+### Browser Extension Specifics (sidebar layout)
+
+- Sidebar width: ~380px, right side of screen
+- Collapse behavior: TBD (deferred — needs eng review)
+- Primary viewport: 1280px+ desktop
+- Mobile web: 375px single-column (supported, not primary)
+
+### Responsive & Accessibility
+
+- WCAG AA color contrast on all text (minimum 4.5:1 against dark backgrounds)
+- Tyre compounds: MUST show letter (S/M/H) — color alone is not sufficient (colorblind users)
+- Touch targets: 44px minimum (mobile web)
+- Screen reader: race event announcements throttled to major events only (not every gap update)
+- Keyboard navigation required for extension sidebar
+
+### Deferred Design Decisions
+
+| Decision | Deferred reason |
+|----------|----------------|
+| Fan level change mid-session | Implementation detail — define during build |
+| Post-race recap generation timing | Product decision — define with first race test |
+| Friend room capacity | Scale decision — define post-launch |
+| Event card priority (simultaneous events) | Eng review decision |
+| Extension sidebar collapse behavior | Eng review — depends on extension framework |
+| Nav Live tab behavior during race | Define during implementation |
+
+---
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
+| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 0 | — | — |
+| Design Review | `/plan-design-review` | UI/UX gaps | 1 | issues_open | score: 2/10 → 7/10, 12 decisions |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
+
+**VERDICT:** Design Review run — eng review required before shipping.
